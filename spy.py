@@ -4,8 +4,8 @@ import sqlite3
 
 
 def getForegroundWindowName():
-    pid = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())
-    return psutil.Process(pid[-1]).name().lower().split(".")[0]
+    pid = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())[-1]
+    return psutil.Process(pid).name().lower().split(".")[0] if pid >= 0 else ''
 
 
 def getForegroundWindowTitle():
@@ -21,6 +21,7 @@ def pushToDb(current_window_name, current_window_title, runtime):
     )
     con.commit()
     con.close()
+
 
 time_seconds = time.time()
 current_window_title = getForegroundWindowTitle()
