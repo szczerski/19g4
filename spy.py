@@ -1,8 +1,10 @@
 import asyncio
 import psutil, win32process, win32gui
 import time
+import datetime
 import sqlite3
 import pyperclip
+import pyautogui
 from winrt.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionManager as MediaManager,
 )
@@ -90,17 +92,24 @@ async def getMediaInfo():
 
 
 time_seconds = time.time()
+time_idle = time.time()
 current_window_title = getForegroundWindowTitle()
 current_window_name = getForegroundWindowName()
 cb_last = ""
 media_artist_last = ""
 media_title_last = ""
-
+today = datetime.date.today()
 
 while True:
 
     if current_window_title == getForegroundWindowTitle():
         time.sleep(1)
+        if int(time.time() - time_idle) > 60 * 5 and current_window_title != "":
+            pyautogui.screenshot(
+                "./screenshots/" + str(today) + "_" + str(int(time.time())) + ".png"
+            )
+            time_idle = time.time()
+
     else:
         runtime = int(time.time() - time_seconds)
         print(current_window_name, current_window_title, runtime)
@@ -117,15 +126,16 @@ while True:
         pushToDbClipboard(cb, id_journal)
         cb_last = cb
 
-    media_artist, media_title = asyncio.run(getMediaInfo())
-    if (
-        media_artist != ""
-        and media_title != ""
-        and media_artist != media_artist_last
-        and media_title != media_title_last
-    ):
-        id_journal = getDbJournalId()
-        pushToDbMedia(media_title, media_artist, id_journal)
+    if int(time.time()) % 5 == 0:
+        media_artist, media_title = asyncio.run(getMediaInfo())
+        if (
+            media_artist != ""
+            and media_title != ""
+            and media_artist != media_artist_last
+            and media_title != media_title_last
+        ):
+            id_journal = getDbJournalId()
+            pushToDbMedia(media_title, media_artist, id_journal)
 
-        media_title_last = media_title
-        media_artist_last = media_artist
+            media_title_last = media_title
+            media_artist_last = media_artist
