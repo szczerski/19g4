@@ -18,7 +18,7 @@ def getForegroundWindowTitle():
 
 
 def pushToDbJournal(current_window_name, current_window_title, runtime):
-    con = sqlite3.connect("19g4.db")
+    con = sqlite3.connect("1g84.db")
     cur = con.cursor()
     cur.execute(
         "INSERT INTO journal (timestamp, name, title, time)" "VALUES(?, ?, ?, ?)",
@@ -29,7 +29,7 @@ def pushToDbJournal(current_window_name, current_window_title, runtime):
 
 
 def getDbJournalId():
-    con = sqlite3.connect("19g4.db")
+    con = sqlite3.connect("1g84.db")
     cur = con.cursor()
     cur.execute("SELECT id FROM journal WHERE id = (SELECT MAX(id) FROM journal)")
     id_journal = cur.fetchone()[0]
@@ -39,11 +39,23 @@ def getDbJournalId():
 
 
 def pushToDbClipboard(cb, id_journal):
-    con = sqlite3.connect("19g4.db")
+    con = sqlite3.connect("1g84.db")
     cur = con.cursor()
     cur.execute(
         "INSERT INTO clipboard (timestamp, id_journal, cb)" "VALUES( ?, ?, ?)",
         (int(time.time()), id_journal, cb),
+    )
+    con.commit()
+    con.close()
+
+
+def pushToDbMedia(media_title, media_artist, id_journal):
+    con = sqlite3.connect("1g84.db")
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO media (timestamp, id_journal, media_artist, media_title )"
+        "VALUES( ?, ?, ?, ?)",
+        (int(time.time()), id_journal, media_artist, media_title),
     )
     con.commit()
     con.close()
@@ -112,7 +124,8 @@ while True:
         and media_artist != media_artist_last
         and media_title != media_title_last
     ):
-        print("MEDIA: ", media_title, media_artist)
+        id_journal = getDbJournalId()
+        pushToDbMedia(media_title, media_artist, id_journal)
 
         media_title_last = media_title
         media_artist_last = media_artist
