@@ -1,6 +1,6 @@
 import sqlite3
 
-con = sqlite3.connect("19g4.db")
+con = sqlite3.connect("1g84.db")
 cur = con.cursor()
 cur.execute(
     "CREATE TABLE IF NOT EXISTS journal (id INTEGER PRIMARY KEY, timestamp INTEGER, name TEXT, title TEXT, time INTEGER)"
