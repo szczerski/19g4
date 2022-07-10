@@ -10,132 +10,156 @@ from winrt.windows.media.control import (
 )
 
 
-def getForegroundWindowName():
-    pid = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())[-1]
-    return psutil.Process(pid).name().lower().split(".")[0] if pid >= 0 else ""
-
-
-def getForegroundWindowTitle():
-    return win32gui.GetWindowText(win32gui.GetForegroundWindow())
-
-
-def pushToDbJournal(current_window_name, current_window_title, runtime):
-    con = sqlite3.connect("1g84.db")
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO journal (timestamp, name, title, time)" "VALUES(?, ?, ?, ?)",
-        (int(time.time()), current_window_name, current_window_title, runtime),
-    )
-    con.commit()
-    con.close()
-
-
-def getDbJournalId():
-    con = sqlite3.connect("1g84.db")
-    cur = con.cursor()
-    cur.execute("SELECT id FROM journal WHERE id = (SELECT MAX(id) FROM journal)")
-    id_journal = cur.fetchone()[0]
-    con.commit()
-    con.close()
-    return id_journal
-
-
-def pushToDbClipboard(cb, id_journal):
-    con = sqlite3.connect("1g84.db")
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO clipboard (timestamp, id_journal, cb)" "VALUES( ?, ?, ?)",
-        (int(time.time()), id_journal, cb),
-    )
-    con.commit()
-    con.close()
-
-
-def pushToDbMedia(media_title, media_artist, id_journal):
-    con = sqlite3.connect("1g84.db")
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO media (timestamp, id_journal, media_artist, media_title )"
-        "VALUES( ?, ?, ?, ?)",
-        (int(time.time()), id_journal, media_artist, media_title),
-    )
-    con.commit()
-    con.close()
-
-
-def getClipboard():
+def start_script():
     try:
-        clipboard = pyperclip.paste()
-    except pyperclip.exceptions.PyperclipException:
-        clipboard = ""
-    return clipboard
+        db_path = "1g84.db"
+        log_path = "log_crash.txt"
 
+        def getForegroundWindowName():
+            pid = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())[
+                -1
+            ]
+            return psutil.Process(pid).name().lower().split(".")[0] if pid >= 0 else ""
 
-async def getMediaInfo():
-    sessions = await MediaManager.request_async()
+        def getForegroundWindowTitle():
+            return win32gui.GetWindowText(win32gui.GetForegroundWindow())
 
-    current_session = sessions.get_current_session()
-
-    if current_session:  # there needs to be a media session running
-        if current_session.source_app_user_model_id == "chrome.exe":
-            info = await current_session.try_get_media_properties_async()
-
-            # song_attr[0] != '_' ignores system attributes
-            info_dict = {
-                song_attr: info.__getattribute__(song_attr)
-                for song_attr in dir(info)
-                if song_attr[0] != "_"
-            }
-
-            info_dict["genres"] = list(info_dict["genres"])
-            return info_dict["artist"], info_dict["title"]
-
-
-time_seconds = time.time()
-time_idle = time.time()
-current_window_title = getForegroundWindowTitle()
-current_window_name = getForegroundWindowName()
-cb_last = ""
-media_artist_last = ""
-media_title_last = ""
-today = datetime.date.today()
-
-while True:
-
-    if current_window_title == getForegroundWindowTitle():
-        time.sleep(1)
-        if int(time.time() - time_idle) > 60 * 5 and current_window_title != "":
-            pyautogui.screenshot(
-                "./screenshots/" + str(today) + "_" + str(int(time.time())) + ".png"
+        def pushToDbJournal(current_window_name, current_window_title, runtime):
+            con = sqlite3.connect(db_path)
+            cur = con.cursor()
+            cur.execute(
+                "INSERT INTO journal (timestamp, name, title, time)"
+                "VALUES(?, ?, ?, ?)",
+                (int(time.time()), current_window_name, current_window_title, runtime),
             )
-            time_idle = time.time()
+            con.commit()
+            con.close()
 
-    else:
-        runtime = int(time.time() - time_seconds)
-        print(current_window_name, current_window_title, runtime)
+        def getDbJournalId():
+            con = sqlite3.connect(db_path)
+            cur = con.cursor()
+            cur.execute(
+                "SELECT id FROM journal WHERE id = (SELECT MAX(id) FROM journal)"
+            )
+            id_journal = cur.fetchone()
+            if id_journal != None:
+                id_journal = id_journal[0]
+            else:
+                id_journal = ""
+            con.commit()
+            con.close()
+            return id_journal
 
-        pushToDbJournal(current_window_name, current_window_title, runtime)
+        def pushToDbClipboard(cb, id_journal):
+            con = sqlite3.connect(db_path)
+            cur = con.cursor()
+            cur.execute(
+                "INSERT INTO clipboard (timestamp, id_journal, cb)" "VALUES( ?, ?, ?)",
+                (int(time.time()), id_journal, cb),
+            )
+            con.commit()
+            con.close()
+
+        def pushToDbMedia(media_title, media_artist, id_journal):
+            con = sqlite3.connect(db_path)
+            cur = con.cursor()
+            cur.execute(
+                "INSERT INTO media (timestamp, id_journal, media_artist, media_title )"
+                "VALUES( ?, ?, ?, ?)",
+                (int(time.time()), id_journal, media_artist, media_title),
+            )
+            con.commit()
+            con.close()
+
+        def getClipboard():
+            try:
+                clipboard = pyperclip.paste()
+            except pyperclip.exceptions.PyperclipException:
+                clipboard = ""
+            return clipboard
+
+        async def getMediaInfo():
+            sessions = await MediaManager.request_async()
+
+            current_session = sessions.get_current_session()
+
+            if current_session:  # there needs to be a media session running
+                if current_session.source_app_user_model_id == "chrome.exe":
+                    info = await current_session.try_get_media_properties_async()
+
+                    # song_attr[0] != '_' ignores system attributes
+                    info_dict = {
+                        song_attr: info.__getattribute__(song_attr)
+                        for song_attr in dir(info)
+                        if song_attr[0] != "_"
+                    }
+
+                    info_dict["genres"] = list(info_dict["genres"])
+                    return info_dict["artist"], info_dict["title"]
+
 
         time_seconds = time.time()
+        time_idle = time.time()
         current_window_title = getForegroundWindowTitle()
         current_window_name = getForegroundWindowName()
+        cb_last = ""
+        media_artist_last = ""
+        media_title_last = ""
+        today = datetime.date.today()
 
-    cb = getClipboard()
-    if cb != "" and cb_last != cb:
-        id_journal = getDbJournalId()
-        pushToDbClipboard(cb, id_journal)
-        cb_last = cb
+        while True:
 
-    if int(time.time()) % 5 == 0:
-        media_artist, media_title = asyncio.run(getMediaInfo())
-        if (
-            media_artist != ""
-            and media_title != ""
-            and media_artist != media_artist_last
-            and media_title != media_title_last
-        ):
-            id_journal = getDbJournalId()
-            pushToDbMedia(media_title, media_artist, id_journal)
+            if current_window_title == getForegroundWindowTitle():
+                time.sleep(1)
+                if int(time.time() - time_idle) > 60 * 5 and current_window_title != "":
+                    pyautogui.screenshot(
+                        "screenshots/"
+                        + str(today)
+                        + "_"
+                        + str(int(time.time()))
+                        + ".png"
+                    )
+                    time_idle = time.time()
 
-            media_title_last = media_title
-            media_artist_last = media_artist
+            else:
+                time_idle = time.time()
+                runtime = int(time.time() - time_seconds)
+                print(current_window_name, current_window_title, runtime)
+
+                pushToDbJournal(current_window_name, current_window_title, runtime)
+
+                time_seconds = time.time()
+                current_window_title = getForegroundWindowTitle()
+                current_window_name = getForegroundWindowName()
+
+            cb = getClipboard()
+            if cb != "" and cb_last != cb:
+                id_journal = getDbJournalId()
+                pushToDbClipboard(cb, id_journal)
+                cb_last = cb
+
+            if int(time.time()) % 5 == 0:
+                if asyncio.run(getMediaInfo()):
+                    media_artist, media_title = asyncio.run(getMediaInfo())
+                else:
+                    media_artist, media_title = '', ''
+                if (
+                    media_artist != ""
+                    and media_title != ""
+                    and media_artist != media_artist_last
+                    and media_title != media_title_last
+                ):
+                    id_journal = getDbJournalId()
+                    pushToDbMedia(media_title, media_artist, id_journal)
+
+                    media_title_last = media_title
+                    media_artist_last = media_artist
+    except Exception as e:
+        with open(log_path, "a") as f:
+            txt = f'{datetime.date.today()}, {datetime.datetime.now().strftime("%H:%M")} - {e} \n'
+            f.write(txt)
+        time.sleep(10)
+        start_script()
+
+
+start_script()
