@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# temporary files
+_temp/
+
+#db
+1g84.db
