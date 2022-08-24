@@ -28,7 +28,16 @@ service = build("sheets", "v4", credentials=creds)
 sheet = service.spreadsheets()
 
 
-def start_script():
+def start_script(
+    cb_last="",
+    current_window_name="",
+    current_window_title="",
+    runtime=0,
+    media_artist_last="",
+    media_title_last="",
+    time_idle = time.time(),
+    # session = 1
+):
     try:
         # log_path = "./logs/log_google_crash.txt"
         log_path = "D:/OneDrive/Backup/1g84/logs/log_google_crash.txt"
@@ -84,7 +93,7 @@ def start_script():
                 [
                     datetime.date.today().strftime("%d/%m/%Y"),
                     time.strftime("%H:%M"),
-                    id_journal,
+                    id_journal - 1,
                     cb,
                 ],
             ]
@@ -128,6 +137,8 @@ def start_script():
                 clipboard = pyperclip.paste()
             except pyperclip.exceptions.PyperclipException:
                 clipboard = ""
+            except:
+                clipboard = ""
             return clipboard
 
         async def getMediaInfo():
@@ -150,13 +161,13 @@ def start_script():
                     return info_dict["artist"], info_dict["title"]
 
         time_seconds = time.time()
-        time_idle = time.time()
+        # time_idle = time.time()
         current_window_title = getForegroundWindowTitle()
         current_window_name = getForegroundWindowName()
-        cb_last = ""
-        media_artist_last = ""
-        media_title_last = ""
-        today = datetime.date.today()
+        # cb_last = ""
+        # media_artist_last = ""
+        # media_title_last = ""
+        # today = datetime.date.today()
 
         while True:
 
@@ -178,15 +189,18 @@ def start_script():
                         sheet_name,
                     )
                     time_idle = time.time()
+                    # session += 1
 
             else:
                 time_idle = time.time()
+                # session = 1
                 runtime = int(time.time() - time_seconds)
                 print(current_window_name, current_window_title, runtime)
-                sheet_name = "journal"
-                pushToDbJournal(
-                    current_window_name, current_window_title, runtime, sheet_name
-                )
+                if runtime > 10:
+                    sheet_name = "journal"
+                    pushToDbJournal(
+                        current_window_name, current_window_title, runtime, sheet_name
+                    )
 
                 time_seconds = time.time()
                 current_window_title = getForegroundWindowTitle()
@@ -203,12 +217,13 @@ def start_script():
                     media_artist, media_title = asyncio.run(getMediaInfo())
                 else:
                     media_artist, media_title = "", ""
+
                 if (
                     media_artist != ""
                     and media_title != ""
-                    and media_artist != media_artist_last
                     and media_title != media_title_last
                 ):
+
                     id_journal = getDbJournalId()
                     pushToDbMedia(media_title, media_artist, id_journal)
 
@@ -220,13 +235,16 @@ def start_script():
             f.write(txt)
         time.sleep(10)
 
-        try:
-            pushToDbJournal(
-                current_window_name, current_window_title, runtime, "journal"
-            )
-        except:
-            time.sleep(5)
-        start_script()
+        start_script(
+            cb_last=cb_last,
+            current_window_name=current_window_name,
+            current_window_title=current_window_title,
+            runtime=runtime,
+            media_artist_last=media_artist_last,
+            media_title_last=media_title_last,
+            time_idle = time_idle,
+            # session = session
+        )
 
 
 start_script()
